@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>選號器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: #24312f;
+            background:
+                linear-gradient(135deg, rgba(0, 121, 107, 0.12), transparent 42%),
+                #edf3f1;
+            font-family: Arial, "Microsoft JhengHei", sans-serif;
+        }
+
+        .page-backdrop {
+            min-height: 100vh;
+            padding: clamp(28px, 6vw, 72px);
+        }
+
+        .page-backdrop h1 {
+            max-width: 720px;
+            margin: 0;
+            color: #164640;
+            font-size: clamp(28px, 4vw, 52px);
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .page-backdrop p {
+            max-width: 520px;
+            margin: 14px 0 0;
+            color: #56716d;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .number-picker {
+            position: fixed;
+            top: 56px;
+            right: 36px;
+            z-index: 1000;
+            width: min(340px, calc(100vw - 24px));
+            border: 1px solid #c9d7d4;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 18px 48px rgba(22, 52, 48, 0.24);
+            user-select: none;
+        }
+
+        .picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 48px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #dbe5e2;
+            border-radius: 8px 8px 0 0;
+            color: #fff;
+            background: #00796b;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        .picker-header:active {
+            cursor: grabbing;
+        }
+
+        .picker-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .drag-icon {
+            display: grid;
+            grid-template-columns: repeat(2, 4px);
+            gap: 3px;
+            flex: 0 0 auto;
+        }
+
+        .drag-icon span {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.82);
+        }
+
+        .picker-count {
+            flex: 0 0 auto;
+            min-width: 56px;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .picker-body {
+            display: grid;
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .selected-numbers {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 44px;
+            padding: 8px;
+            border: 1px solid #dfe8e5;
+            border-radius: 8px;
+            background: #f5f8f7;
+            overflow-x: auto;
+        }
+
+        .selected-empty {
+            color: #708682;
+            font-size: 13px;
+        }
+
+        .selected-ball {
+            display: grid;
+            flex: 0 0 32px;
+            width: 32px;
+            height: 32px;
+            place-items: center;
+            border-radius: 50%;
+            color: #fff;
+            background: #00796b;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .number-button,
+        .action-button {
+            border: 0;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .number-button {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 1px solid #d2dfdb;
+            border-radius: 6px;
+            color: #23433e;
+            background: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            transition: background 0.16s, border-color 0.16s, color 0.16s;
+        }
+
+        .number-button:hover {
+            border-color: #00796b;
+            background: #e9f5f2;
+        }
+
+        .number-button.is-selected {
+            border-color: #00796b;
+            color: #fff;
+            background: #00796b;
+        }
+
+        .picker-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .action-button {
+            min-height: 38px;
+            border-radius: 6px;
+            color: #fff;
+            background: #00796b;
+            font-weight: 700;
+        }
+
+        .action-button:hover {
+            background: #005f54;
+        }
+
+        .action-button.secondary {
+            border: 1px solid #cbd9d5;
+            color: #34504c;
+            background: #fff;
+        }
+
+        .action-button.secondary:hover {
+            background: #eef4f2;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                overflow: auto;
+            }
+
+            .number-picker {
+                top: 16px;
+                right: 12px;
+            }
+
+            .page-backdrop {
+                padding: 380px 20px 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page-backdrop">
+        <h1>選號器頁面</h1>
+        <p>號碼視窗會固定浮在瀏覽器畫面上。</p>
+    </main>
+
+    <section class="number-picker" id="numberPicker" aria-label="選號器">
+        <header class="picker-header" id="pickerHandle">
+            <div class="picker-title">
+                <span class="drag-icon" aria-hidden="true">
+                    <span></span><span></span>
+                    <span></span><span></span>
+                    <span></span><span></span>
+                </span>
+                <span>選號器</span>
+            </div>
+            <span class="picker-count" id="pickerCount">0 / 6</span>
+        </header>
+
+        <div class="picker-body">
+            <div class="selected-numbers" id="selectedNumbers" aria-live="polite">
+                <span class="selected-empty">尚未選號</span>
+            </div>
+
+            <div class="number-grid" id="numberGrid"></div>
+
+            <div class="picker-actions">
+                <button class="action-button" id="randomButton" type="button">隨機選號</button>
+                <button class="action-button secondary" id="clearButton" type="button">清除</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const maximumNumber = 49;
+        const selectionLimit = 6;
+        const picker = document.getElementById("numberPicker");
+        const pickerHandle = document.getElementById("pickerHandle");
+        const numberGrid = document.getElementById("numberGrid");
+        const selectedNumbers = document.getElementById("selectedNumbers");
+        const pickerCount = document.getElementById("pickerCount");
+        const randomButton = document.getElementById("randomButton");
+        const clearButton = document.getElementById("clearButton");
+        const selected = new Set();
+
+        function renderSelectedNumbers() {
+            const orderedNumbers = [...selected].sort((a, b) => a - b);
+            selectedNumbers.innerHTML = "";
+            pickerCount.textContent = `${orderedNumbers.length} / ${selectionLimit}`;
+
+            if (orderedNumbers.length === 0) {
+                selectedNumbers.innerHTML = '<span class="selected-empty">尚未選號</span>';
+                return;
+            }
+
+            orderedNumbers.forEach((number) => {
+                const ball = document.createElement("span");
+                ball.className = "selected-ball";
+                ball.textContent = number;
+                selectedNumbers.appendChild(ball);
+            });
+        }
+
+        function syncNumberButtons() {
+            numberGrid.querySelectorAll(".number-button").forEach((button) => {
+                const number = Number(button.dataset.number);
+                button.classList.toggle("is-selected", selected.has(number));
+                button.setAttribute("aria-pressed", selected.has(number));
+            });
+        }
+
+        function toggleNumber(number) {
+            if (selected.has(number)) {
+                selected.delete(number);
+            } else if (selected.size < selectionLimit) {
+                selected.add(number);
+            }
+
+            renderSelectedNumbers();
+            syncNumberButtons();
+        }
+
+        function buildNumberGrid() {
+            for (let number = 1; number <= maximumNumber; number += 1) {
+                const button = document.createElement("button");
+                button.className = "number-button";
+                button.type = "button";
+                button.dataset.number = number;
+                button.textContent = number;
+                button.setAttribute("aria-label", `選擇 ${number} 號`);
+                button.setAttribute("aria-pressed", "false");
+                button.addEventListener("click", () => toggleNumber(number));
+                numberGrid.appendChild(button);
+            }
+        }
+
+        function chooseRandomNumbers() {
+            const pool = Array.from({ length: maximumNumber }, (_, index) => index + 1);
+            selected.clear();
+
+            while (selected.size < selectionLimit) {
+                const randomIndex = Math.floor(Math.random() * pool.length);
+                selected.add(pool.splice(randomIndex, 1)[0]);
+            }
+
+            renderSelectedNumbers();
+            syncNumberButtons();
+        }
+
+        function clearNumbers() {
+            selected.clear();
+            renderSelectedNumbers();
+            syncNumberButtons();
+        }
+
+        function keepPickerInViewport(left, top) {
+            const margin = 8;
+            const maxLeft = window.innerWidth - picker.offsetWidth - margin;
+            const maxTop = window.innerHeight - picker.offsetHeight - margin;
+
+            return {
+                left: Math.min(Math.max(margin, left), Math.max(margin, maxLeft)),
+                top: Math.min(Math.max(margin, top), Math.max(margin, maxTop))
+            };
+        }
+
+        function movePicker(left, top) {
+            const position = keepPickerInViewport(left, top);
+            picker.style.left = `${position.left}px`;
+            picker.style.top = `${position.top}px`;
+            picker.style.right = "auto";
+        }
+
+        pickerHandle.addEventListener("pointerdown", (event) => {
+            if (event.button !== undefined && event.button !== 0) {
+                return;
+            }
+
+            const pickerRect = picker.getBoundingClientRect();
+            const offsetX = event.clientX - pickerRect.left;
+            const offsetY = event.clientY - pickerRect.top;
+
+            pickerHandle.setPointerCapture(event.pointerId);
+
+            function dragPicker(pointerEvent) {
+                movePicker(pointerEvent.clientX - offsetX, pointerEvent.clientY - offsetY);
+            }
+
+            function stopDragging(pointerEvent) {
+                pickerHandle.releasePointerCapture(pointerEvent.pointerId);
+                pickerHandle.removeEventListener("pointermove", dragPicker);
+                pickerHandle.removeEventListener("pointerup", stopDragging);
+                pickerHandle.removeEventListener("pointercancel", stopDragging);
+            }
+
+            pickerHandle.addEventListener("pointermove", dragPicker);
+            pickerHandle.addEventListener("pointerup", stopDragging);
+            pickerHandle.addEventListener("pointercancel", stopDragging);
+        });
+
+        window.addEventListener("resize", () => {
+            const pickerRect = picker.getBoundingClientRect();
+            movePicker(pickerRect.left, pickerRect.top);
+        });
+
+        randomButton.addEventListener("click", chooseRandomNumbers);
+        clearButton.addEventListener("click", clearNumbers);
+
+        buildNumberGrid();
+        renderSelectedNumbers();
+    </script>
+</body>
+</html>
