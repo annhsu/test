@@ -88,7 +88,8 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
 .bottom-nav{
   position:fixed;bottom:0;left:0;right:0;
   background:var(--card);border-top:1px solid var(--rule);
-  display:flex;padding:10px 8px calc(var(--safe-bottom) + 12px);
+  display:flex;padding:10px 8px 12px;
+  padding-bottom:max(12px, env(safe-area-inset-bottom, 0px));
   z-index:100;
 }
 .nav-item{
@@ -628,6 +629,62 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
   </div>
 </div>
 
+<!-- ══ SCREEN 6: 交易記錄 ══ -->
+<div class="screen" id="screen-trade">
+  <div class="status-bar">
+    <span class="status-time" id="trade-time">9:41</span>
+    <div class="status-icons"></div>
+  </div>
+  <div class="top-bar">
+    <div>
+      <div class="top-bar-title">交易記錄</div>
+      <div class="top-bar-sub">記一筆，比你以為的快。</div>
+    </div>
+    <button onclick="App.openTradeModal()" style="background:var(--yellow);border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 新增</button>
+  </div>
+  <div class="rule-line"></div>
+  <div class="screen-scroll" style="padding-top:14px">
+    <div id="trade-content"></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 7: 投資目標 ══ -->
+<div class="screen" id="screen-goals">
+  <div class="status-bar">
+    <span class="status-time" id="goals-time">9:41</span>
+    <div class="status-icons"></div>
+  </div>
+  <div class="top-bar">
+    <div>
+      <div class="top-bar-title">投資目標</div>
+      <div class="top-bar-sub">沒有目標的錢，只是在漂流。</div>
+    </div>
+    <button onclick="App.openGoalModal()" style="background:var(--yellow);border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 目標</button>
+  </div>
+  <div class="rule-line"></div>
+  <div class="screen-scroll" style="padding-top:14px">
+    <div id="goals-content"></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 8: 資金配置 ══ -->
+<div class="screen" id="screen-alloc">
+  <div class="status-bar">
+    <span class="status-time" id="alloc-time">9:41</span>
+    <div class="status-icons"></div>
+  </div>
+  <div class="top-bar">
+    <div>
+      <div class="top-bar-title">資金配置</div>
+      <div class="top-bar-sub">雞蛋和籃子的永恆問題。</div>
+    </div>
+  </div>
+  <div class="rule-line"></div>
+  <div class="screen-scroll" style="padding-top:14px">
+    <div id="alloc-content"></div>
+  </div>
+</div>
+
 <!-- ══ BOTTOM NAV ══ -->
 <nav class="bottom-nav" id="bottom-nav">
   <div class="nav-item active" onclick="App.navTo('home')" data-screen="home">
@@ -635,9 +692,21 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
     <div class="nav-lbl">首頁</div>
     <div class="nav-dot"></div>
   </div>
+  <div class="nav-item" onclick="App.navTo('trade')" data-screen="trade">
+    <div class="nav-icon">📝</div>
+    <div class="nav-lbl">交易</div>
+  </div>
   <div class="nav-item" onclick="App.navTo('ai')" data-screen="ai">
     <div class="nav-icon">🤖</div>
     <div class="nav-lbl">分析</div>
+  </div>
+  <div class="nav-item" onclick="App.navTo('goals')" data-screen="goals">
+    <div class="nav-icon">🎯</div>
+    <div class="nav-lbl">目標</div>
+  </div>
+  <div class="nav-item" onclick="App.navTo('alloc')" data-screen="alloc">
+    <div class="nav-icon">🥧</div>
+    <div class="nav-lbl">配置</div>
   </div>
   <div class="nav-item" onclick="App.navTo('dividend')" data-screen="dividend">
     <div class="nav-icon">💸</div>
@@ -715,6 +784,75 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
   </div>
 </div>
 
+<!-- ══ TRADE MODAL ══ -->
+<div class="modal-overlay" id="trade-modal" onclick="App.closeTradeModalOnBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-title" id="trade-modal-title">新增交易</div>
+    <div style="display:flex;background:var(--paper);border:1.5px solid var(--rule);border-radius:10px;padding:3px;gap:3px;margin-bottom:14px;">
+      <div id="tm-buy-tab" onclick="App.setTradeType('buy')" style="flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:700;background:var(--up);color:#fff;cursor:pointer;">▲ 買入</div>
+      <div id="tm-sell-tab" onclick="App.setTradeType('sell')" style="flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;">▼ 賣出</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">股票</label>
+      <select id="tf-symbol" class="form-input" onchange="App.onTradeSymbolChange()"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">交易日期</label>
+        <input type="date" id="tf-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">成交價 (NT$)</label>
+        <input type="number" id="tf-price" class="form-input" placeholder="例：957" oninput="App.calcTradeSummary()">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">股數</label>
+      <input type="number" id="tf-shares" class="form-input" placeholder="例：100" oninput="App.calcTradeSummary()">
+    </div>
+    <div id="trade-summary" style="background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:12px;margin-bottom:8px;font-size:12px;display:none;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted)">小計</span><span id="ts-subtotal" style="font-weight:600">—</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted)">手續費 (0.1425%)</span><span id="ts-fee" style="color:var(--dn)">—</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;border-top:1px solid var(--rule);"><span>實際金額</span><span id="ts-total">—</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備註（選填）</label>
+      <input type="text" id="tf-note" class="form-input" placeholder="例：法說利多，加碼布局">
+    </div>
+    <div class="action-row" style="margin:16px 0 0">
+      <button class="btn btn-outline" onclick="App.closeTradeModal()">取消</button>
+      <button class="btn btn-primary" onclick="App.saveTrade()">確認記錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GOAL MODAL ══ -->
+<div class="modal-overlay" id="goal-modal" onclick="App.closeGoalModalOnBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-title">新增投資目標</div>
+    <div class="form-group">
+      <label class="form-label">目標名稱</label>
+      <input type="text" id="gf-name" class="form-input" placeholder="例：月股息 $5,000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">目標類型</label>
+      <select id="gf-type" class="form-input">
+        <option value="dividend">月股息目標 (NT$)</option>
+        <option value="return">年化報酬率 (%)</option>
+        <option value="assets">總資產目標 (NT$)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">目標數值</label>
+      <input type="number" id="gf-target" class="form-input" placeholder="例：5000">
+    </div>
+    <div class="action-row" style="margin:16px 0 0">
+      <button class="btn btn-outline" onclick="App.closeGoalModal()">取消</button>
+      <button class="btn btn-primary" onclick="App.saveGoal()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -731,6 +869,8 @@ const DB = {
 const state = {
   portfolio: DB.get('portfolio') || [],
   dividends: DB.get('dividends') || [],
+  trades: DB.get('trades') || [],
+  goals: DB.get('goals') || [],
   prices: {},
   chartData: {},
   selectedIdx: -1,
@@ -872,6 +1012,9 @@ App.navTo = function(screen) {
   if (screen === 'ai') App.renderAI();
   if (screen === 'dividend') App.renderDividend();
   if (screen === 'report') App.renderReport();
+  if (screen === 'trade') App.renderTrade();
+  if (screen === 'goals') App.renderGoals();
+  if (screen === 'alloc') App.renderAlloc();
 };
 
 App.navToDetail = function(idx) {
@@ -1443,6 +1586,280 @@ App.renderReport = function() {
       `<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">尚無股息記錄</div>`}
     </div>
     <div style="height:20px"></div>`;
+};
+
+// ── TRADE SCREEN ──
+App.renderTrade = function() {
+  const trades = state.trades || [];
+  const el = document.getElementById('trade-content');
+  if (!trades.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-title">還沒有交易記錄</div><div class="empty-sub">點右上角「+ 新增」<br>記錄你的買賣交易</div></div>`;
+    return;
+  }
+  const sorted = [...trades].sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = sorted.map(t => {
+    const isBuy = t.type === 'buy';
+    const fee = Math.round(t.price * t.shares * 0.001425);
+    const total = isBuy ? t.price * t.shares + fee : t.price * t.shares - fee;
+    return `<div style="margin:0 20px 10px;background:var(--card);border:1px solid var(--rule);border-radius:14px;overflow:hidden;">
+      <div style="background:${isBuy ? 'var(--up)' : 'var(--dn)'};padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="color:#fff;font-size:13px;font-weight:700;">${isBuy ? '▲ 買入' : '▼ 賣出'} ${t.name||t.symbol}</div>
+        <div style="color:rgba(255,255,255,0.8);font-size:11px;">${t.date}</div>
+      </div>
+      <div style="padding:10px 16px;">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--rule);">
+          <span style="color:var(--muted)">股數 × 價格</span><span style="font-weight:600">${t.shares} × $${t.price}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--rule);">
+          <span style="color:var(--muted)">手續費</span><span style="color:var(--dn)">-$${fee}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;">
+          <span>${isBuy ? '實際支出' : '實際入帳'}</span><span>${fmtNT(total)}</span>
+        </div>
+        ${t.note ? `<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:2px;">「${t.note}」</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+};
+
+App.openTradeModal = function() {
+  state.tradeType = 'buy';
+  const sel = document.getElementById('tf-symbol');
+  sel.innerHTML = state.portfolio.length
+    ? state.portfolio.map(s => `<option value="${s.symbol}">${s.name} (${s.symbol})</option>`).join('')
+    : '<option value="">請先新增持股</option>';
+  document.getElementById('tf-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('tf-price').value = '';
+  document.getElementById('tf-shares').value = '';
+  document.getElementById('tf-note').value = '';
+  document.getElementById('trade-summary').style.display = 'none';
+  App.setTradeType('buy');
+  App.onTradeSymbolChange();
+  document.getElementById('trade-modal').classList.add('open');
+};
+
+App.setTradeType = function(type) {
+  state.tradeType = type;
+  const buyTab = document.getElementById('tm-buy-tab');
+  const sellTab = document.getElementById('tm-sell-tab');
+  if (type === 'buy') {
+    buyTab.style.cssText = 'flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:700;background:var(--up);color:#fff;cursor:pointer;';
+    sellTab.style.cssText = 'flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;';
+  } else {
+    sellTab.style.cssText = 'flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:700;background:var(--dn);color:#fff;cursor:pointer;';
+    buyTab.style.cssText = 'flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;';
+  }
+};
+
+App.onTradeSymbolChange = function() {
+  const sym = document.getElementById('tf-symbol').value;
+  const stock = state.portfolio.find(s => s.symbol === sym);
+  if (stock && state.prices[sym]?.price) {
+    document.getElementById('tf-price').value = state.prices[sym].price;
+    App.calcTradeSummary();
+  }
+};
+
+App.calcTradeSummary = function() {
+  const price = parseFloat(document.getElementById('tf-price').value);
+  const shares = parseFloat(document.getElementById('tf-shares').value);
+  if (!price || !shares) { document.getElementById('trade-summary').style.display='none'; return; }
+  const fee = Math.round(price * shares * 0.001425);
+  const isBuy = state.tradeType === 'buy';
+  document.getElementById('ts-subtotal').textContent = fmtNT(price * shares);
+  document.getElementById('ts-fee').textContent = `-$${fee}`;
+  document.getElementById('ts-total').textContent = fmtNT(isBuy ? price*shares+fee : price*shares-fee);
+  document.getElementById('trade-summary').style.display = 'block';
+};
+
+App.closeTradeModal = function() { document.getElementById('trade-modal').classList.remove('open'); };
+App.closeTradeModalOnBg = function(e) { if(e.target===document.getElementById('trade-modal')) App.closeTradeModal(); };
+
+App.saveTrade = function() {
+  const symbol = document.getElementById('tf-symbol').value;
+  const price = parseFloat(document.getElementById('tf-price').value);
+  const shares = parseFloat(document.getElementById('tf-shares').value);
+  const date = document.getElementById('tf-date').value;
+  const note = document.getElementById('tf-note').value.trim();
+  if (!symbol || !price || !shares || !date) { showToast('請填寫所有必填欄位'); return; }
+  const stock = state.portfolio.find(s => s.symbol === symbol);
+  if (!state.trades) state.trades = [];
+  state.trades.push({ type: state.tradeType, symbol, name: stock?.name||symbol, price, shares, date, note });
+  DB.set('trades', state.trades);
+  App.closeTradeModal();
+  App.renderTrade();
+  showToast(state.tradeType === 'buy' ? '買入記錄已儲存 ▲' : '賣出記錄已儲存 ▼');
+};
+
+// ── GOALS SCREEN ──
+App.renderGoals = function() {
+  const goals = state.goals || [];
+  const el = document.getElementById('goals-content');
+  const p = state.portfolio;
+  const prices = state.prices;
+  const divs = state.dividends;
+  const year = new Date().getFullYear();
+
+  let totalValue = 0, totalCost = 0;
+  p.forEach(s => {
+    const price = prices[s.symbol]?.price ?? s.avgCost;
+    totalValue += price * s.shares;
+    totalCost += s.avgCost * s.shares;
+  });
+  const yearDiv = divs.filter(d => new Date(d.date).getFullYear()===year).reduce((s,d)=>s+d.total,0);
+  const monthDiv = yearDiv / (new Date().getMonth()+1);
+  const returnPct = totalCost > 0 ? ((totalValue-totalCost)/totalCost)*100 : 0;
+
+  const milestones = [
+    { icon:'🎖', label:'第一筆交易', done: (state.trades||[]).length>0 },
+    { icon:'💸', label:'股息破萬', done: yearDiv>=10000 },
+    { icon:'📈', label:'首次獲利', done: totalValue>totalCost },
+    { icon:'👑', label:'打敗大盤', done: returnPct>8 },
+  ];
+
+  const goalCards = goals.length ? goals.map((g,i) => {
+    let current=0, target=g.target, label='', unit='';
+    if (g.type==='dividend') { current=monthDiv; label='月均股息'; unit='NT$'; }
+    else if (g.type==='return') { current=returnPct; label='年化報酬率'; unit='%'; }
+    else { current=totalValue; label='總資產'; unit='NT$'; }
+    const pct = Math.min(100, target>0 ? (current/target)*100 : 0);
+    const colors = ['var(--yellow)','var(--up)','var(--dn)','var(--muted)'];
+    const color = colors[i % colors.length];
+    const fmt = g.type==='return' ? v=>v.toFixed(1)+'%' : v=>fmtNT(v);
+    return `<div style="background:var(--card);border:1.5px solid var(--rule);border-radius:16px;padding:16px;margin:0 20px 10px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;bottom:0;width:4px;background:${color};border-radius:16px 0 0 16px;"></div>
+      <div style="padding-left:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">${label}</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--ink);margin-top:2px;">${g.name}</div></div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--muted);">目前達成</div>
+            <div style="font-size:16px;font-weight:700;color:${color};">${fmt(current)}</div>
+          </div>
+        </div>
+        <div style="height:8px;background:var(--rule);border-radius:4px;margin-bottom:6px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .5s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+          <span>${pct.toFixed(1)}% 完成</span>
+          <span>目標：${fmt(target)} <span onclick="App.deleteGoal(${i})" style="color:var(--rule);margin-left:8px;cursor:pointer;">✕</span></span>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '';
+
+  el.innerHTML = `
+    ${goalCards}
+    <div onclick="App.openGoalModal()" style="margin:0 20px 16px;border:1.5px dashed var(--rule);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">
+      <span style="font-size:20px;color:var(--muted)">+</span>
+      <span style="font-size:13px;color:var(--muted);">新增目標</span>
+    </div>
+    <div style="padding:0 20px 6px"><div class="section-eyebrow">成就徽章</div></div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:0 20px 20px;">
+      ${milestones.map(m=>`<div style="flex-shrink:0;background:${m.done?'var(--yellow-light)':'var(--card)'};border:1px solid ${m.done?'var(--yellow)':'var(--rule)'};border-radius:10px;padding:10px 12px;text-align:center;opacity:${m.done?1:0.4};">
+        <div style="font-size:24px;">${m.icon}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--ink);margin-top:4px;white-space:nowrap;">${m.label}</div>
+      </div>`).join('')}
+    </div>`;
+};
+
+App.openGoalModal = function() {
+  ['gf-name','gf-target'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('gf-type').value = 'dividend';
+  document.getElementById('goal-modal').classList.add('open');
+};
+App.closeGoalModal = function() { document.getElementById('goal-modal').classList.remove('open'); };
+App.closeGoalModalOnBg = function(e) { if(e.target===document.getElementById('goal-modal')) App.closeGoalModal(); };
+
+App.saveGoal = function() {
+  const name = document.getElementById('gf-name').value.trim();
+  const type = document.getElementById('gf-type').value;
+  const target = parseFloat(document.getElementById('gf-target').value);
+  if (!name || !target) { showToast('請填寫目標名稱和數值'); return; }
+  if (!state.goals) state.goals = [];
+  state.goals.push({ name, type, target });
+  DB.set('goals', state.goals);
+  App.closeGoalModal();
+  App.renderGoals();
+  showToast('目標已新增 🎯');
+};
+
+App.deleteGoal = function(idx) {
+  if (!confirm('確定刪除這個目標？')) return;
+  state.goals.splice(idx, 1);
+  DB.set('goals', state.goals);
+  App.renderGoals();
+};
+
+// ── ALLOC SCREEN ──
+App.renderAlloc = function() {
+  const p = state.portfolio;
+  const prices = state.prices;
+  const el = document.getElementById('alloc-content');
+
+  if (!p.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🥧</div><div class="empty-title">還沒有持股</div><div class="empty-sub">新增持股後即可查看<br>資金配置圓餅圖</div></div>`;
+    return;
+  }
+
+  let totalValue = 0;
+  const items = p.map(s => {
+    const price = prices[s.symbol]?.price ?? s.avgCost;
+    const val = price * s.shares;
+    totalValue += val;
+    return { ...s, val };
+  });
+
+  const colors = ['#1A1A1A','#C0392B','#E8C547','#8B7355','#2D5A3D','#D4CDB8','#6B4F3A'];
+  const circ = 2 * Math.PI * 70;
+  let offset = 0;
+  const segments = items.map((item, i) => {
+    const pct = totalValue > 0 ? item.val / totalValue : 0;
+    const dash = pct * circ;
+    const seg = `<circle cx="110" cy="110" r="70" fill="none" stroke="${colors[i%colors.length]}" stroke-width="28"
+      stroke-dasharray="${dash.toFixed(1)} ${(circ-dash).toFixed(1)}" stroke-dashoffset="${(-offset).toFixed(1)}" stroke-linecap="butt"/>`;
+    offset += dash;
+    return seg;
+  });
+
+  const maxItem = items.reduce((a,b) => a.val>b.val?a:b, items[0]);
+  const maxPct = (maxItem.val/totalValue*100).toFixed(1);
+  const warning = parseFloat(maxPct) > 40
+    ? `<div style="background:var(--up-light);border:1px solid var(--up);border-radius:10px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;"><span style="font-size:14px;flex-shrink:0;">⚠️</span><span style="font-size:11px;color:var(--ink);line-height:1.5;">${maxItem.name} 佔比 ${maxPct}%，超過建議上限 40%。集中度偏高，人生勝負別押在一顆星上。</span></div>`
+    : parseFloat(maxPct) > 35
+    ? `<div style="background:var(--yellow-light);border:1px solid var(--yellow);border-radius:10px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;"><span style="font-size:14px;flex-shrink:0;">⚡</span><span style="font-size:11px;color:var(--ink);line-height:1.5;">${maxItem.name} 佔比 ${maxPct}%，接近建議上限 40%。持續觀察集中度。</span></div>`
+    : '';
+
+  el.innerHTML = `
+    <div style="padding:0 20px 4px;display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">投資組合總值</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--ink);">${fmtNT(totalValue)}</div></div>
+    </div>
+    <div style="display:flex;justify-content:center;padding:8px 20px;">
+      <svg width="220" height="220" viewBox="0 0 220 220">
+        ${segments.join('')}
+        <circle cx="110" cy="110" r="56" fill="var(--paper)"/>
+        <text x="110" y="104" text-anchor="middle" font-size="11" fill="#8B7355" font-family="DM Sans,sans-serif" letter-spacing="1">持股</text>
+        <text x="110" y="124" text-anchor="middle" font-size="22" fill="#1A1A1A" font-family="DM Serif Display,serif">${p.length} 檔</text>
+      </svg>
+    </div>
+    <div style="padding:0 20px 80px;">
+      ${warning}
+      ${items.map((item,i)=>{
+        const pct = (item.val/totalValue*100).toFixed(1);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border-radius:10px;margin-bottom:6px;border:1px solid var(--rule);">
+          <div style="width:12px;height:12px;border-radius:3px;background:${colors[i%colors.length]};flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--ink);">${item.icon||'📈'} ${item.name}</div>
+            <div style="height:5px;background:var(--rule);border-radius:3px;margin-top:5px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${colors[i%colors.length]};border-radius:3px;"></div></div>
+          </div>
+          <div style="text-align:right;min-width:70px;">
+            <div style="font-size:13px;font-weight:700;color:var(--ink);">${pct}%</div>
+            <div style="font-size:10px;color:var(--muted);">${fmtNT(item.val)}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 };
 
 // ── MODAL (Add/Edit Stock) ──
