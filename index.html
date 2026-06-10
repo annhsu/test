@@ -44,7 +44,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
 .screen.active{transform:translateX(0)}
 .screen.prev{transform:translateX(-30%)}
 
-.screen-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+.screen-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:90px}
 
 /* ── STATUS BAR ── */
 .status-bar{
@@ -88,16 +88,19 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
 .bottom-nav{
   position:fixed;bottom:0;left:0;right:0;
   background:var(--card);border-top:1px solid var(--rule);
-  display:flex;padding:10px 8px 12px;
+  display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  padding:8px 4px 12px;
   padding-bottom:max(12px, env(safe-area-inset-bottom, 0px));
   z-index:100;
+  scrollbar-width:none;
 }
+.bottom-nav::-webkit-scrollbar{display:none;}
 .nav-item{
-  flex:1;display:flex;flex-direction:column;
-  align-items:center;gap:3px;cursor:pointer;padding:4px 0;
+  flex:0 0 56px;display:flex;flex-direction:column;
+  align-items:center;gap:2px;cursor:pointer;padding:2px 0;
 }
-.nav-icon{font-size:22px;line-height:1}
-.nav-lbl{font-size:9px;color:var(--muted);font-weight:500;transition:color .15s}
+.nav-icon{font-size:20px;line-height:1}
+.nav-lbl{font-size:9px;color:var(--muted);font-weight:500;transition:color .15s;white-space:nowrap;}
 .nav-dot{width:4px;height:4px;background:var(--up);border-radius:50%;margin-top:1px}
 .nav-item.active .nav-lbl{color:var(--up);font-weight:700}
 
@@ -696,10 +699,6 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
     <div class="nav-icon">📝</div>
     <div class="nav-lbl">交易</div>
   </div>
-  <div class="nav-item" onclick="App.navTo('ai')" data-screen="ai">
-    <div class="nav-icon">🤖</div>
-    <div class="nav-lbl">分析</div>
-  </div>
   <div class="nav-item" onclick="App.navTo('goals')" data-screen="goals">
     <div class="nav-icon">🎯</div>
     <div class="nav-lbl">目標</div>
@@ -707,6 +706,10 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;color:var(--ink)}
   <div class="nav-item" onclick="App.navTo('alloc')" data-screen="alloc">
     <div class="nav-icon">🥧</div>
     <div class="nav-lbl">配置</div>
+  </div>
+  <div class="nav-item" onclick="App.navTo('ai')" data-screen="ai">
+    <div class="nav-icon">🤖</div>
+    <div class="nav-lbl">分析</div>
   </div>
   <div class="nav-item" onclick="App.navTo('dividend')" data-screen="dividend">
     <div class="nav-icon">💸</div>
