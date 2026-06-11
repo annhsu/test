@@ -2,7 +2,7 @@
   "name": "StockWise",
   "short_name": "StockWise",
   "description": "台灣股票投資組合追蹤 App",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#F7F3EC",
   "theme_color": "#1A1A1A",

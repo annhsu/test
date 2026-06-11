@@ -1,5 +1,5 @@
-const CACHE = 'stockwise-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const CACHE = 'stockwise-v3';
+const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -14,12 +14,25 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('finance.yahoo.com') ||
-      e.request.url.includes('openapi.twse.com.tw') ||
-      e.request.url.includes('mis.twse.com.tw')) {
+  const url = e.request.url;
+  // Never cache API calls
+  if (url.includes('finance.yahoo.com') || url.includes('twse.com.tw') ||
+      url.includes('corsproxy') || url.includes('allorigins')) {
     return;
   }
+  // Network-first for HTML so updates show up immediately
+  if (e.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+  // Cache-first for static assets (fonts etc.)
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('/index.html')))
+    caches.match(e.request).then(r => r || fetch(e.request))
   );
 });

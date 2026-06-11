@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="StockWise">
 <title>StockWise</title>
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231A1A1A'/%3E%3Ctext x='96' y='130' text-anchor='middle' font-size='100'%3E📈%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
@@ -930,50 +930,86 @@ function isTradingHours() {
 }
 
 // ── STOCK PRICE API ──
-async function fetchYahooPrice(symbol, market) {
-  const suffix = '.TW';
-  const ySymbol = symbol + suffix;
-  try {
-    const res = await fetch(
-      `https://query2.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=5d`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (!result) throw new Error('No data');
-    const meta = result.meta;
-    const price = meta.regularMarketPrice ?? meta.previousClose;
-    const prevClose = meta.previousClose ?? meta.chartPreviousClose;
-    const change = price - prevClose;
-    const changePct = (change / prevClose) * 100;
-    return { price, prevClose, change, changePct, currency: meta.currency || 'TWD' };
-  } catch(e) {
-    console.warn('Yahoo failed for', symbol, e.message);
-    return null;
+// Yahoo Finance blocks browser CORS, so we go through a CORS proxy,
+// with TWSE open API (CORS-enabled) as primary source for TW prices.
+
+let twseCache = null, twseCacheTime = 0;
+async function fetchTwseAll() {
+  // TWSE daily close for ALL listed stocks (CORS-enabled official API)
+  if (twseCache && Date.now() - twseCacheTime < 5*60*1000) return twseCache;
+  const res = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
+    { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error('TWSE HTTP '+res.status);
+  const arr = await res.json();
+  twseCache = {};
+  arr.forEach(r => { twseCache[r.Code] = r; });
+  twseCacheTime = Date.now();
+  return twseCache;
+}
+
+async function fetchViaProxy(url) {
+  const proxies = [
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ];
+  for (const wrap of proxies) {
+    try {
+      const res = await fetch(wrap(url), { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return await res.json();
+    } catch(e) { /* try next */ }
   }
+  throw new Error('All proxies failed');
+}
+
+async function fetchYahooPrice(symbol, market) {
+  // 1) Try TWSE official API first (real CORS support, listed stocks)
+  try {
+    const all = await fetchTwseAll();
+    const r = all[symbol];
+    if (r && r.ClosingPrice && parseFloat(r.ClosingPrice) > 0) {
+      const price = parseFloat(r.ClosingPrice);
+      const change = parseFloat(r.Change) || 0;
+      const prevClose = price - change;
+      return { price, prevClose, change, changePct: prevClose>0 ? (change/prevClose)*100 : 0, currency: 'TWD' };
+    }
+  } catch(e) { console.warn('TWSE failed', e.message); }
+
+  // 2) Fallback: Yahoo via CORS proxy (covers OTC, ETF not in TWSE list)
+  const suffixes = market === 'otc' ? ['.TWO', '.TW'] : ['.TW', '.TWO'];
+  for (const suffix of suffixes) {
+    try {
+      const data = await fetchViaProxy(
+        `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}${suffix}?interval=1d&range=5d`);
+      const result = data?.chart?.result?.[0];
+      if (!result) continue;
+      const meta = result.meta;
+      const price = meta.regularMarketPrice ?? meta.previousClose;
+      const prevClose = meta.previousClose ?? meta.chartPreviousClose;
+      const change = price - prevClose;
+      return { price, prevClose, change, changePct: (change/prevClose)*100, currency: meta.currency || 'TWD' };
+    } catch(e) { /* try next suffix */ }
+  }
+  console.warn('All price sources failed for', symbol);
+  return null;
 }
 
 async function fetchYahooChart(symbol, range) {
-  const ySymbol = symbol + '.TW';
   const intervalMap = { '1d':'5m', '1mo':'1d', '3mo':'1d', '1y':'1wk' };
   const interval = intervalMap[range] || '1d';
-  try {
-    const res = await fetch(
-      `https://query2.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=${interval}&range=${range}`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (!result) throw new Error('No data');
-    const timestamps = result.timestamp || [];
-    const closes = result.indicators?.quote?.[0]?.close || [];
-    return timestamps.map((t,i) => ({ t: t*1000, p: closes[i] })).filter(x => x.p != null);
-  } catch(e) {
-    console.warn('Chart fetch failed', e.message);
-    return [];
+  for (const suffix of ['.TW', '.TWO']) {
+    try {
+      const data = await fetchViaProxy(
+        `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}${suffix}?interval=${interval}&range=${range}`);
+      const result = data?.chart?.result?.[0];
+      if (!result) continue;
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      const pts = timestamps.map((t,i) => ({ t: t*1000, p: closes[i] })).filter(x => x.p != null);
+      if (pts.length) return pts;
+    } catch(e) { /* try next */ }
   }
+  console.warn('Chart fetch failed for', symbol);
+  return [];
 }
 
 // ── PRICE MANAGEMENT ──
@@ -1942,7 +1978,7 @@ App.deleteStock = function() {
 // ── INIT ──
 App.init = function() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
   updateClocks();
   setInterval(updateClocks, 30000);
